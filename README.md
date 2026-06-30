@@ -1,15 +1,18 @@
 # OpenCloud Workstation
 
-Mobile-first cloud development workstation — accessible via Telegram, powered by OpenClaw + OpenCode CLI.
+Mobile-first cloud development workstation accessible via Telegram,
+powered by OpenClaw + OpenCode CLI.
 
-## Architecture
+**One command to deploy:**
 
+```bash
+git clone https://github.com/oussaidwork/opencloud-workstation
+cd opencloud-workstation
+cp .env.example .env   # ← fill in your API keys
+docker compose up -d
 ```
-Telegram → OpenClaw Gateway → exec tool → OpenCode CLI → workspace/git/Docker/shell
-                                        → code-server (VS Code in browser)
-```
 
-## Services
+## What you get
 
 | Service | Port | Purpose |
 |---------|------|---------|
@@ -17,49 +20,79 @@ Telegram → OpenClaw Gateway → exec tool → OpenCode CLI → workspace/git/D
 | code-server | 8443 | VS Code in browser |
 | Cloudflared | — | Optional public tunnel |
 
-## Quick Start
+## Prerequisites
 
-### 1. Host prerequisites (one-time)
+A Linux server with Docker + Compose installed:
 
 ```bash
-sudo dnf install -y docker docker-compose-plugin
-sudo systemctl enable --now docker
+curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER
 # log out and back in
 ```
 
+## First-time setup
+
+### 1. Get API keys
+
+| Key | Where to get | Required |
+|-----|-------------|----------|
+| `TELEGRAM_BOT_TOKEN` | [@BotFather](https://t.me/BotFather) | Yes |
+| `OPENCODE_API_KEY` | [opencode.ai/auth](https://opencode.ai/auth) | Yes |
+| `CODE_SERVER_PASSWORD` | pick one | Yes |
+| `GEMINI_API_KEY` | [aistudio.google.com](https://aistudio.google.com/apikey) | Optional |
+| `OPENROUTER_API_KEY` | [openrouter.ai/keys](https://openrouter.ai/keys) | Optional |
+
 ### 2. Deploy
 
 ```bash
-git clone https://github.com/YOUR/opencloud-workstation
-cd opencloud-workstation
 cp .env.example .env
-# Edit .env with your API keys
+nano .env        # paste your keys
 docker compose up -d
 ```
 
-### 3. Pair your Telegram
+### 3. Pair Telegram
 
-Message your bot and use the pairing code from the logs:
+Check the logs for a pairing code:
 
 ```bash
-docker compose logs openclaw | grep pairing
+docker compose logs openclaw | grep -i "code\|pair"
 ```
 
-## Configuration
+Send the code to your bot on Telegram to approve the device.
 
-- **Models:** edit `openclaw/config/openclaw.json`
-- **Telegram pairing:** `docker compose logs openclaw | grep code`
-- **Switch model in chat:** `/model opencode/mimo-v2.5-free`
+### 4. Open VS Code
 
-## Available Commands
+Visit `http://your-server:8443` — password is `CODE_SERVER_PASSWORD`.
 
-- `/projects` — list workspace projects with git status
-- `/model <name>` — switch AI model
-- Any question — answered via the active model
-- Coding tasks (>5s) — delegated to OpenCode CLI via `opencode-run`
+## Usage
 
-## Using Cloudflare Tunnel
+| Command | What it does |
+|---------|-------------|
+| `/projects` | List workspace projects with git status |
+| `/model <name>` | Switch AI model (see available models below) |
+| Any message | Answered via the active model |
+| Coding tasks | Auto-delegated to OpenCode CLI |
+
+### Free models (included)
+
+- `opencode/deepseek-v4-flash-free`
+- `opencode/mimo-v2.5-free`
+- `opencode/nemotron-3-ultra-free`
+- `opencode/north-mini-code-free`
+
+Switch in Telegram: `/model opencode/mimo-v2.5-free`
+
+## Private git repos
+
+The compose file forwards your local SSH agent automatically.
+If you don't run an SSH agent, mount your keys directly:
+
+```yaml
+volumes:
+  - ~/.ssh:/home/node/.ssh:ro
+```
+
+## Cloudflare Tunnel
 
 ```bash
 docker compose --profile tunnel up -d
@@ -71,6 +104,17 @@ Requires `CLOUDFLARE_TUNNEL_TOKEN` in `.env`.
 
 ```bash
 git pull
-docker compose pull
+docker compose down
+docker compose build --no-cache openclaw
 docker compose up -d
 ```
+
+## Architecture
+
+```
+Telegram → OpenClaw → exec → OpenCode CLI → git / Docker / shell
+                   → code-server (VS Code in browser)
+```
+
+All state lives in Docker volumes (`openclaw-config`, `workspace`).
+Destroy and recreate containers without losing data.

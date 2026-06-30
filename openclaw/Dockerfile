@@ -3,10 +3,7 @@ FROM node:24-bookworm
 ARG OPENCODE_VERSION=1.17.11
 ARG OPENCLAW_VERSION=2026.6.10
 
-ENV PNPM_HOME=/home/opc/.local/share/pnpm
-ENV PATH=$PNPM_HOME:/usr/local/bin:$PATH
-ENV HOME=/home/opc
-
+USER root
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -16,31 +13,34 @@ RUN apt-get update && apt-get install -y \
     fd-find \
     fzf \
     btop \
-    docker.io-client \
     ca-certificates \
+    openssh-client \
+    docker.io \
     && rm -rf /var/lib/apt/lists/*
 
-RUN npm install -g pnpm@latest
+USER node
+ENV HOME=/home/node
+RUN mkdir -p /home/node/workspace/{projects,archives,templates,scripts,backups,docker,logs} && \
+    mkdir -p /home/node/.local/share/opencode && \
+    mkdir -p /home/node/.local/state && \
+    mkdir -p /home/node/.cache
 
-RUN pnpm install -g @opencode-ai/plugin@${OPENCODE_VERSION} openclaw@${OPENCLAW_VERSION}
+USER root
+RUN npm install -g @opencode-ai/plugin@${OPENCODE_VERSION} openclaw@${OPENCLAW_VERSION}
 
-RUN groupadd -g 1000 opc && \
-    useradd -m -u 1000 -g 1000 -s /bin/bash opc && \
-    mkdir -p /home/opc/workspace/{projects,archives,templates,scripts,backups,docker,logs} && \
-    mkdir -p /home/opc/.config/code-server && \
-    mkdir -p /home/opc/.local/share/opencode && \
-    mkdir -p /home/opc/.local/state && \
-    mkdir -p /home/opc/.cache && \
-    chown -R opc:opc /home/opc
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod 755 /entrypoint.sh
 
-COPY scripts/ /home/opc/workspace/scripts/
-RUN chmod +x /home/opc/workspace/scripts/*
+COPY scripts/ /home/node/workspace/scripts/
+RUN chmod +x /home/node/workspace/scripts/* && \
+    chown -R node:node /home/node
 
-COPY --chown=opc:opc skills/ /home/opc/workspace/skills/
+COPY --chown=node:node skills/ /home/node/workspace/skills/
 
-USER opc
-WORKDIR /home/opc/workspace
+USER node
+WORKDIR /home/node/workspace
 
 EXPOSE 18789
 
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["openclaw", "gateway", "--port", "18789"]

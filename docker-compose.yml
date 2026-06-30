@@ -7,18 +7,16 @@ services:
     ports:
       - "18789:18789"
     volumes:
-      - openclaw-config:/home/opc/.openclaw
-      - workspace:/home/opc/workspace
-      - ./openclaw/config/openclaw.json:/home/opc/.openclaw/openclaw.json
-      - ./openclaw/skills:/home/opc/workspace/skills
-      - ./openclaw/scripts:/home/opc/workspace/scripts:ro
+      - openclaw-config:/home/node/.openclaw
+      - workspace:/home/node/workspace
+      - ./openclaw/config/openclaw.json:/home/node/.openclaw/openclaw.json
+      - ./openclaw/skills:/home/node/workspace/skills
+      - ./openclaw/scripts:/home/node/workspace/scripts:ro
+      - ${SSH_AUTH_SOCK:-/dev/null}:/ssh-agent:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     env_file: .env
     environment:
-      - OPENCODE_API_KEY=${OPENCODE_API_KEY}
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - SSH_AUTH_SOCK=/ssh-agent
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://127.0.0.1:18789/health"]
       interval: 30s
@@ -34,13 +32,13 @@ services:
       - "8443:8443"
     volumes:
       - workspace:/home/coder/workspace
-      - ./code-server/config.yaml:/config/code-server/config.yaml
     environment:
       - PUID=1000
       - PGID=1000
       - TZ=UTC
       - DEFAULT_WORKSPACE=/home/coder/workspace
       - PASSWORD=${CODE_SERVER_PASSWORD}
+      - SUDO_PASSWORD=${CODE_SERVER_PASSWORD}
 
   cloudflared:
     image: cloudflare/cloudflared:latest
@@ -50,9 +48,6 @@ services:
     profiles:
       - tunnel
     env_file: .env
-    depends_on:
-      - openclaw
-      - code-server
 
 volumes:
   openclaw-config:
