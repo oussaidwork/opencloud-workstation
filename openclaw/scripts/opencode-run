@@ -1,0 +1,3 @@
+#!/bin/bash
+# Run a coding task using OpenCode CLI within the workspace
+exec opencode run --allow-write --model deepseek-v4-flash-free "$@"

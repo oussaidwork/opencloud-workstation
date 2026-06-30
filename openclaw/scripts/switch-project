@@ -1,0 +1,19 @@
+#!/bin/bash
+# Switch to a project and set it as the active workspace context
+if [ -z "$1" ]; then
+  echo "Usage: switch-project <project-name>"
+  echo "Projects:"
+  ls -1 ~/workspace/projects/
+  exit 1
+fi
+
+TARGET="$HOME/workspace/projects/$1"
+if [ ! -d "$TARGET" ]; then
+  echo "Project '$1' not found in ~/workspace/projects/"
+  exit 1
+fi
+
+cd "$TARGET" || exit 1
+echo "Switched to $1"
+echo "Branch: $(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'not a git repo')"
+echo "Path: $TARGET"
